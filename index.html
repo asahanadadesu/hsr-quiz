@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>你是星铁云玩家吗？</title>
+<meta name="description" content="《崩坏：星穹铁道》剧情与世界观知识测试。">
+<meta name="theme-color" content="#1a1d3a">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app">
+
+  <!-- 首页 -->
+  <section id="home" class="screen" aria-labelledby="home-title">
+    <p class="kicker">《崩坏：星穹铁道》剧情知识测试</p>
+    <h1 id="home-title" class="title">你是星铁<br>云玩家吗？</h1>
+    <p class="lede">题目取材自主线、支线、模拟宇宙与智库。测测你对星铁剧情与世界观到底了解多少。</p>
+    <div class="modes">
+      <button class="mode" data-mode="quick" disabled>
+        <span class="mode-name">浅度测试</span>
+        <span class="mode-desc">15 题，约 5 分钟</span>
+      </button>
+      <button class="mode" data-mode="deep" disabled>
+        <span class="mode-name">深度测试</span>
+        <span class="mode-desc">60 题，约 20 分钟</span>
+      </button>
+    </div>
+    <p id="load-status" class="status" role="status">正在加载题库…</p>
+  </section>
+
+  <!-- 答题 -->
+  <section id="quiz" class="screen" hidden aria-live="polite">
+    <header class="quiz-head">
+      <span id="q-count" class="count"></span>
+    </header>
+    <div class="progress" aria-hidden="true"><div id="progress-bar"></div></div>
+
+    <article class="ticket">
+      <p id="q-meta" class="q-meta"></p>
+      <h2 id="q-text" class="q-text"></h2>
+      <ul id="options" class="options"></ul>
+      <div id="feedback" class="feedback" hidden>
+        <p id="verdict" class="verdict"></p>
+        <p id="explain" class="explain"></p>
+      </div>
+    </article>
+    <div class="quiz-actions">
+      <button id="next" class="btn primary" hidden>下一题</button>
+    </div>
+  </section>
+
+  <!-- 结果 -->
+  <section id="result" class="screen" hidden aria-labelledby="rank-title">
+    <p id="r-mode" class="kicker"></p>
+    <p class="r-score"><span id="r-correct"></span><span class="r-of"> / <span id="r-total"></span></span></p>
+    <h2 id="rank-title" class="rank"></h2>
+    <p id="r-text" class="r-text"></p>
+
+    <div class="cert-form">
+      <label for="name">鉴定书上的称呼（可不填）</label>
+      <div class="cert-row">
+        <input id="name" type="text" maxlength="12" placeholder="无名客" autocomplete="nickname">
+        <button id="make-cert" class="btn primary">生成鉴定书</button>
+      </div>
+    </div>
+    <figure id="cert" class="cert" hidden>
+      <img id="cert-img" alt="答题鉴定书">
+      <figcaption>
+        <a id="cert-save" class="btn primary" download="星铁云玩家鉴定书.png">保存图片</a>
+        <span class="hint">在手机上也可以长按图片保存。</span>
+      </figcaption>
+    </figure>
+
+    <details id="review" class="review">
+      <summary>回顾答错的题</summary>
+      <ol id="review-list"></ol>
+    </details>
+
+    <div class="result-actions">
+      <button id="again" class="btn">再测一次</button>
+    </div>
+  </section>
+
+</main>
+<footer class="foot">
+  非官方粉丝作品，与米哈游无关。题目与解析整理自游戏文本及 BWIKI。<span id="bank-ver"></span>
+</footer>
+<script src="logic.js"></script>
+<script src="cert.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
