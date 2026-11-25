@@ -85,6 +85,7 @@
   }
 
   function ask() {
+    if (session.current) return; // 本题未作答时不能跳题
     const c = session.next();
     if (!c) return finish();
     const i = session.index;

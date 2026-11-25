@@ -30,7 +30,7 @@ body {
 }
 button, input { font: inherit; }
 #app { max-width: 640px; margin: 0 auto; padding: 40px 16px 24px; }
-.screen[hidden] { display: none; }
+[hidden] { display: none !important; } /* 防止 .btn 等的 display 覆盖 hidden 属性 */
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 /* 首页 */
@@ -90,6 +90,7 @@ button, input { font: inherit; }
 }
 .opt:hover:not(:disabled) { border-color: var(--ink-soft); }
 .opt:disabled { cursor: default; }
+.opt > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .opt-key { flex: none; font: 700 14px var(--serif); color: var(--ink-soft); }
 .opt.right { border-color: var(--right); background: #3f9a8f1a; }
 .opt.wrong { border-color: var(--wrong); background: #c255691a; }
