@@ -27,36 +27,50 @@
     }
     return b;
   }
-  async function getBytes(path) {
-    const res = await fetch(path, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(res.status);
-    return unscramble(await res.arrayBuffer());
-  }
-  async function fetchBank() {
-    let text;
-    if (typeof DecompressionStream === 'function') {
-      try {
-        const packed = await getBytes('data/bank.bin');
-        const stream = new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-        text = await new Response(stream).text();
-      } catch (e) { text = null; }
+  // 题库地址带上与 css/js 相同的版本号（由构建脚本写入 index.html），换版后不会读到旧缓存
+  const VER = (document.querySelector('script[src*="app.js?v="]') || {}).src?.split('?v=')[1] || '';
+  async function getBytes(path, onProgress) {
+    const res = await fetch(VER ? `${path}?v=${VER}` : path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const total = +res.headers.get('content-length') || 0;
+    if (!res.body || !total || !onProgress) return unscramble(await res.arrayBuffer());
+    const reader = res.body.getReader(), chunks = [];
+    let got = 0;
+    for (;;) { // 边下边报进度，网速慢时用户能看到在动
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      onProgress(Math.min(got / total, 1));
     }
-    if (!text) text = new TextDecoder().decode(await getBytes('data/bank.raw')); // 旧浏览器：未压缩版
-    return JSON.parse(text);
+    const buf = new Uint8Array(got);
+    let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
+    return unscramble(buf);
+  }
+  async function inflate(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).text();
+  }
+  async function fetchBank(onProgress) {
+    if (typeof DecompressionStream === 'function') {
+      try { return JSON.parse(await inflate(await getBytes('data/bank.bin', onProgress))); }
+      catch (e) { console.warn('bank.bin 读取失败，改用 bank.raw', e); }
+    }
+    return JSON.parse(new TextDecoder().decode(await getBytes('data/bank.raw', onProgress))); // 旧浏览器：未压缩版
   }
   async function load() {
     const status = $('load-status');
     status.classList.remove('error');
     status.textContent = '正在加载题库…';
     try {
-      bank = await fetchBank();
+      bank = await fetchBank(p => { status.textContent = `正在加载题库… ${Math.round(p * 100)}%`; });
       status.textContent = `题库共 ${bank.count} 题`;
       $('bank-ver').textContent = ` 题库版本 ${bank.version}`;
       document.querySelectorAll('.mode').forEach(b => (b.disabled = false));
     } catch (e) {
+      console.error('题库加载失败', e);
       status.classList.add('error');
       status.innerHTML = '';
-      status.append('题库加载失败，请检查网络后重试。 ');
+      status.append(`题库加载失败（${e && e.message ? e.message : e}），请检查网络后重试。 `);
       const retry = document.createElement('button');
       retry.className = 'btn'; retry.textContent = '重试'; retry.onclick = load;
       status.append(retry);
