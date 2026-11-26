@@ -89,9 +89,8 @@
     const c = session.next();
     if (!c) return finish();
     const i = session.index;
-    $('q-count').textContent = `第 ${i + 1} / ${session.total} 题`;
     $('progress-bar').style.width = `${i / session.total * 100}%`;
-    $('q-meta').textContent = bank.regions[c.q.r] || '';
+    $('q-meta').textContent = `第 ${i + 1} / ${session.total} 题`;
     $('q-text').textContent = c.q.q;
     const ul = $('options'); ul.innerHTML = '';
     c.options.forEach((text, k) => {
