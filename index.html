@@ -6,7 +6,7 @@
 <title>你是星铁云玩家吗？</title>
 <meta name="description" content="《崩坏：星穹铁道》剧情与世界观知识测试。">
 <meta name="theme-color" content="#1a1d3a">
-<link rel="stylesheet" href="style.css?v=0ff50d4d">
+<link rel="stylesheet" href="style.css?v=1587d080">
 </head>
 <body>
 <main id="app">
@@ -57,20 +57,17 @@
     <h2 id="rank-title" class="rank"></h2>
     <p id="r-text" class="r-text"></p>
 
-    <div class="cert-form">
-      <label for="name">鉴定书上的称呼（可不填）</label>
-      <div class="cert-row">
-        <input id="name" type="text" maxlength="12" placeholder="无名客" autocomplete="nickname">
-        <button id="make-cert" class="btn primary">生成鉴定书</button>
-      </div>
-    </div>
-    <figure id="cert" class="cert" hidden>
-      <img id="cert-img" alt="答题鉴定书">
-      <figcaption>
-        <a id="cert-save" class="btn primary" download="星铁云玩家鉴定书.png">保存图片</a>
-        <span class="hint">在手机上也可以长按图片保存。</span>
-      </figcaption>
+    <figure id="cert" class="cert">
+      <img id="cert-img" alt="剧情鉴定书">
     </figure>
+    <div class="cert-form">
+      <label for="name">鉴定书上的称呼</label>
+      <input id="name" type="text" maxlength="12" placeholder="无名客" autocomplete="nickname">
+    </div>
+    <div class="cert-actions">
+      <a id="cert-save" class="btn primary" download="星铁剧情鉴定书.png">保存鉴定书</a>
+      <span class="hint">手机上也可以长按图片保存。</span>
+    </div>
 
     <details id="review" class="review">
       <summary>回顾答错的题</summary>
@@ -86,8 +83,8 @@
 <footer class="foot">
   非官方粉丝作品，与米哈游无关。题目与解析整理自游戏文本及 BWIKI。<span id="bank-ver"></span>
 </footer>
-<script src="logic.js?v=0ff50d4d"></script>
-<script src="cert.js?v=0ff50d4d"></script>
-<script src="app.js?v=0ff50d4d"></script>
+<script src="logic.js?v=1587d080"></script>
+<script src="cert.js?v=1587d080"></script>
+<script src="app.js?v=1587d080"></script>
 </body>
 </html>

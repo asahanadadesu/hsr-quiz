@@ -155,35 +155,29 @@
     }
 
     $('name').value = store.get('cert-name');
-    $('cert').hidden = true;
-    if (certUrl) { URL.revokeObjectURL(certUrl); certUrl = null; }
+    finishedAt = new Date();
     show('result');
+    makeCert();
   }
 
+  let finishedAt = null, certJob = 0, nameTimer = 0;
   async function makeCert() {
-    const btn = $('make-cert');
+    const job = ++certJob;
     const name = $('name').value.trim().slice(0, 12);
     store.set('cert-name', name);
-    btn.disabled = true; btn.textContent = '正在生成…';
-    try {
-      const url = location.host ? location.host + location.pathname.replace(/index\.html$/, '') : '';
-      const blob = await Cert.render(session.result(), session.history, name, url.replace(/\/$/, ''));
-      if (certUrl) URL.revokeObjectURL(certUrl);
-      certUrl = URL.createObjectURL(blob);
-      $('cert-img').src = certUrl;
-      $('cert-save').href = certUrl;
-      $('cert').hidden = false;
-      $('cert').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } finally {
-      btn.disabled = false; btn.textContent = '重新生成';
-    }
+    const url = location.host ? (location.host + location.pathname.replace(/index\.html$/, '')).replace(/\/$/, '') : '';
+    const blob = await Cert.render(session.result(), session.history, name, url, finishedAt);
+    if (job !== certJob) return; // 用户还在输入，丢弃旧图
+    if (certUrl) URL.revokeObjectURL(certUrl);
+    certUrl = URL.createObjectURL(blob);
+    $('cert-img').src = certUrl;
+    $('cert-save').href = certUrl;
   }
 
   // ---------- 事件 ----------
   document.querySelectorAll('.mode').forEach(b => (b.onclick = () => start(b.dataset.mode)));
   $('next').onclick = ask;
-  $('make-cert').onclick = makeCert;
-  $('name').addEventListener('keydown', e => { if (e.key === 'Enter') makeCert(); });
+  $('name').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(makeCert, 350); });
   $('again').onclick = () => show('home');
   document.addEventListener('keydown', e => {
     if ($('quiz').hidden || e.target.tagName === 'INPUT') return;
