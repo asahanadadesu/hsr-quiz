@@ -4,7 +4,7 @@
 
   // 难度分布矩阵：MATRIX[状态 S1..S5][难度 T1..T5]（见 出题准则.md）
   const MATRIX = [
-    [1.0, 0.0, 0.0, 0.0, 0.0],
+    [0.8, 0.2, 0.0, 0.0, 0.0],
     [0.2, 0.8, 0.0, 0.0, 0.0],
     [0.0, 0.1, 0.8, 0.1, 0.0],
     [0.0, 0.1, 0.2, 0.6, 0.1],
@@ -27,12 +27,28 @@
     { title: '超硬核剧情玩家', stamp: '智识星神', note: '难……难道是博识尊上车了帕？！', text: '您是超硬核剧情玩家！您对星铁剧情与世界观的了解程度已能媲美星铁文案组本身，甚至可能更强。您是这个世界上最了解星铁剧情的人之一！' },
   ];
 
-  function rankOf(correct, total) {
-    if (correct <= 0) return 0;
-    if (correct >= total) return 6;
-    for (let k = 1; k <= 4; k++) if (correct * 5 <= total * k) return k;
-    return 5;
+  // 水平估计：每档题有固定难度，蒙对概率 1/4（三参数 logistic 模型），
+  // 对答题记录求后验均值（EAP）。答对难题比答对易题更能说明水平，蒙对的部分被扣除。
+  const IRT = { a: 1.6, b: [0, 1, 2, 3, 4], guess: 0.25, prior: [1.5, 2.5] };
+  function estimate(history) {
+    const { a, b, guess, prior: [mu, sd] } = IRT;
+    let num = 0, den = 0, max = -Infinity;
+    const lps = [];
+    for (let th = -4; th <= 9; th += 0.05) {
+      let lp = -((th - mu) ** 2) / (2 * sd * sd);
+      for (const h of history) {
+        const p = guess + (1 - guess) / (1 + Math.exp(-a * (th - b[h.tier - 1])));
+        lp += Math.log(h.correct ? p : 1 - p);
+      }
+      lps.push([th, lp]); if (lp > max) max = lp;
+    }
+    for (const [th, lp] of lps) { const w = Math.exp(lp - max); num += w * th; den += w; }
+    return num / den;
   }
+  // 水平 → 0–100 的鉴定分；评级按鉴定分划档
+  function scoreOf(theta) { return Math.max(0, Math.min(100, Math.round((theta + 0.5) / 5.5 * 100))); }
+  const CUTS = [4, 26, 41, 56, 71, 91]; // 鉴定分 ≥ CUTS[k-1] 即达到第 k 档
+  function rankOf(score) { return CUTS.filter(c => score >= c).length; }
 
   function shuffle(a, rnd) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -92,7 +108,7 @@
       if (!c) throw new Error('no current question');
       const correct = choice === c.answer;
       this.history.push({ q: c.q, tier: c.tier, state: c.state, options: c.options, answer: c.answer, choice, correct });
-      this.state = correct ? Math.min(5, this.state + 1) : Math.max(1, this.state - 2);
+      this.state = correct ? Math.min(5, this.state + 1) : Math.max(1, this.state - 1);
       this.maxState = Math.max(this.maxState, this.state);
       this.current = null;
       return correct;
@@ -100,14 +116,15 @@
 
     result() {
       const correct = this.correctCount;
-      const rank = rankOf(correct, this.total);
+      const score = scoreOf(estimate(this.history));
+      const rank = rankOf(score);
       const byTier = [1, 2, 3, 4, 5].map(t => {
         const hs = this.history.filter(h => h.tier === t);
         return { tier: t, total: hs.length, correct: hs.filter(h => h.correct).length };
       });
-      return { correct, total: this.total, rank, ...RANKS[rank], byTier, maxState: this.maxState, mode: MODES[this.mode].name };
+      return { correct, total: this.total, score, rank, key: this.mode, ...RANKS[rank], byTier, maxState: this.maxState, mode: MODES[this.mode].name };
     }
   }
 
-  g.Quiz = { MATRIX, MODES, RANKS, rankOf, pickTier, Session };
+  g.Quiz = { MATRIX, MODES, RANKS, CUTS, estimate, scoreOf, rankOf, pickTier, Session };
 })(typeof window !== 'undefined' ? window : globalThis);

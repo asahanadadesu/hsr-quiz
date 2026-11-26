@@ -134,6 +134,7 @@
   function finish() {
     const r = session.result();
     $('r-mode').textContent = r.mode;
+    $('r-points').textContent = r.score;
     $('r-correct').textContent = r.correct;
     $('r-total').textContent = r.total;
     $('rank-title').textContent = r.title;
