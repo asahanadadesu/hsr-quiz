@@ -80,21 +80,34 @@
   }
 
   // ---------- 存档 ----------
-  // 手机 QQ/微信内置浏览器点外链常在原页面跳转，返回时页面会重新加载；
-  // 每步都把进度存进 localStorage，重新打开时自动接着答。
-  const SAVE = 'quiz-progress', SAVE_TTL = 12 * 3600e3;
-  function save() {
-    store.set(SAVE, JSON.stringify({
-      ver: bank.version, at: Date.now(), snap: session.snapshot(),
-      finishedAt: finishedAt ? finishedAt.getTime() : 0,
-    }));
+  // 手机内置浏览器点外链常在原页面跳转，返回时页面会重新加载；有的（如贴吧）还不保留 localStorage。
+  // 所以进度编码成一小段文字（题库版本.模式.种子.每题选择.阶段.时间），
+  // 同时写进网址的 # 后面（不产生新的历史记录）和 localStorage，重新打开时任一处有效即可接着答。
+  const SAVE = 'quiz-p2', SAVE_TTL = 12 * 3600e3;
+  const clearHash = () => { if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
+  function code(stage, at) {
+    return [bank.version.slice(0, 6), session.mode === 'deep' ? 'd' : 'q', session.seed.toString(36),
+      session.history.map(h => h.choice).join(''), stage, (at || Date.now()).toString(36)].join('.');
+  }
+  function save(stage) {
+    const c = code(stage, stage === 'r' ? finishedAt.getTime() : 0);
+    store.set(SAVE, c);
+    if (stage === 'r') clearHash(); // 结果页不放进网址，免得分享链接时把别人带到自己的结果
+    else try { history.replaceState(null, '', '#' + c); } catch (e) { /* 忽略 */ }
+  }
+  function parse(c) {
+    const m = /^([0-9a-f]{6})\.([qd])\.([0-9a-z]+)\.([0-3]*)\.([qar])\.([0-9a-z]+)$/.exec(c || '');
+    if (!m || m[1] !== bank.version.slice(0, 6)) return null;
+    const at = parseInt(m[6], 36);
+    if (!(Date.now() - at < SAVE_TTL)) return null;
+    return { mode: m[2] === 'd' ? 'deep' : 'quick', seed: parseInt(m[3], 36), choices: [...m[4]].map(Number), stage: m[5], at };
   }
   function resume() {
-    let s;
-    try { s = JSON.parse(store.get(SAVE) || 'null'); } catch (e) { s = null; }
-    if (!s || s.ver !== bank.version || Date.now() - s.at > SAVE_TTL) { store.del(SAVE); return; }
-    try { session = Quiz.Session.restore(bank, s.snap); } catch (e) { store.del(SAVE); return; }
-    if (session.done) return finish(new Date(s.finishedAt || s.at));
+    store.del('quiz-progress'); // 旧版存档格式
+    const s = parse(location.hash.slice(1)) || parse(store.get(SAVE));
+    if (!s) { store.del(SAVE); clearHash(); return; }
+    session = Quiz.Session.replay(bank, s.mode, s.seed, s.choices, s.stage === 'q');
+    if (s.stage === 'r' || session.done) return finish(new Date(s.at));
     show('quiz');
     if (session.current) return renderQuestion(session.current, session.index);
     if (!session.history.length) return ask();
@@ -105,7 +118,9 @@
 
   // ---------- 答题 ----------
   function start(mode) {
-    session = new Quiz.Session(bank, mode);
+    const seed = (Math.random() * 2147483646 + 1) >>> 0;
+    session = new Quiz.Session(bank, mode, Quiz.seeded(seed));
+    session.seed = seed;
     finishedAt = null;
     show('quiz');
     ask();
@@ -115,7 +130,7 @@
     if (session.current) return; // 本题未作答时不能跳题
     const c = session.next();
     if (!c) return finish();
-    save();
+    save('q');
     renderQuestion(c, session.index);
   }
 
@@ -143,7 +158,7 @@
     if (!session.current) return;
     const { answer, q } = session.current;
     const ok = session.answer(k);
-    save();
+    save('a');
     showFeedback(answer, k, q, ok);
   }
 
@@ -192,7 +207,7 @@
 
     $('name').value = store.get('cert-name');
     finishedAt = at || new Date();
-    save(); // 结果页也存着：从外链回来还能看到鉴定书
+    save('r'); // 结果页也存着：刷新后还能看到鉴定书
     show('result');
     makeCert();
   }
@@ -215,7 +230,7 @@
   document.querySelectorAll('.mode').forEach(b => (b.onclick = () => start(b.dataset.mode)));
   $('next').onclick = ask;
   $('name').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(makeCert, 350); });
-  $('again').onclick = () => { store.del(SAVE); show('home'); };
+  $('again').onclick = () => { store.del(SAVE); clearHash(); show('home'); };
   document.addEventListener('keydown', e => {
     if ($('quiz').hidden || e.target.tagName === 'INPUT') return;
     const k = '1234'.indexOf(e.key) >= 0 ? '1234'.indexOf(e.key) : 'abcd'.indexOf(e.key.toLowerCase());
