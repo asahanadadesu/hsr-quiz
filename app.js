@@ -91,6 +91,7 @@
     const i = session.index;
     $('progress-bar').style.width = `${i / session.total * 100}%`;
     $('q-meta').textContent = `第 ${i + 1} / ${session.total} 题`;
+    $('help-tip').hidden = session.maxState < 3; // 首次到达 S3 后一直显示
     $('q-text').textContent = c.q.q;
     const ul = $('options'); ul.innerHTML = '';
     c.options.forEach((text, k) => {

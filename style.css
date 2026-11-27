@@ -151,3 +151,11 @@ button, input { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* 难题提示：鼓励查资料 */
+.help-tip {
+  margin: 0 0 14px; padding: 10px 14px; border: 1px solid #d1aa5266; border-radius: 10px;
+  background: #d1aa521a; color: #f3e6c4; font-size: 15px; line-height: 1.6;
+}
+.help-tip a { color: var(--gold); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.help-tip a:hover { color: #f2d58a; }
