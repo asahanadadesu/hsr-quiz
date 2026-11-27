@@ -108,7 +108,7 @@
       if (!c) throw new Error('no current question');
       const correct = choice === c.answer;
       this.history.push({ q: c.q, tier: c.tier, state: c.state, options: c.options, answer: c.answer, choice, correct });
-      this.state = correct ? Math.min(5, this.state + 1) : Math.max(1, this.state - 1);
+      this.state = correct ? Math.min(5, this.state + 1) : 1; // 答错回到最低档
       this.maxState = Math.max(this.maxState, this.state);
       this.current = null;
       return correct;
