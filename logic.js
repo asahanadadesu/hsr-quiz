@@ -114,6 +114,26 @@
       return correct;
     }
 
+    // 存档：只记题目 id，读档时按 id 从题库取回（题库更新后 id 对不上则读档失败）
+    snapshot() {
+      return {
+        mode: this.mode, state: this.state, maxState: this.maxState,
+        pools: this.pools.map(p => p.map(q => q.id)),
+        history: this.history.map(h => ({ ...h, q: h.q.id })),
+        current: this.current && { ...this.current, q: this.current.q.id },
+      };
+    }
+    static restore(bank, snap, rnd) {
+      const byId = new Map(bank.questions.map(q => [q.id, q]));
+      const get = id => { const q = byId.get(id); if (!q) throw new Error('存档与题库不符'); return q; };
+      const s = new Session(bank, snap.mode, rnd);
+      s.state = snap.state; s.maxState = snap.maxState;
+      s.pools = snap.pools.map(p => p.map(get));
+      s.history = snap.history.map(h => ({ ...h, q: get(h.q) }));
+      s.current = snap.current && { ...snap.current, q: get(snap.current.q) };
+      return s;
+    }
+
     result() {
       const correct = this.correctCount;
       const score = scoreOf(estimate(this.history));

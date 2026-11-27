@@ -13,6 +13,7 @@
   const store = {
     get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 隐私模式等 */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* 同上 */ } },
   };
 
   // ---------- 加载题库 ----------
@@ -66,6 +67,7 @@
       status.textContent = `题库共 ${bank.count} 题`;
       $('bank-ver').textContent = ` 题库版本 ${bank.version}`;
       document.querySelectorAll('.mode').forEach(b => (b.disabled = false));
+      resume();
     } catch (e) {
       console.error('题库加载失败', e);
       status.classList.add('error');
@@ -77,9 +79,34 @@
     }
   }
 
+  // ---------- 存档 ----------
+  // 手机 QQ/微信内置浏览器点外链常在原页面跳转，返回时页面会重新加载；
+  // 每步都把进度存进 localStorage，重新打开时自动接着答。
+  const SAVE = 'quiz-progress', SAVE_TTL = 12 * 3600e3;
+  function save() {
+    store.set(SAVE, JSON.stringify({
+      ver: bank.version, at: Date.now(), snap: session.snapshot(),
+      finishedAt: finishedAt ? finishedAt.getTime() : 0,
+    }));
+  }
+  function resume() {
+    let s;
+    try { s = JSON.parse(store.get(SAVE) || 'null'); } catch (e) { s = null; }
+    if (!s || s.ver !== bank.version || Date.now() - s.at > SAVE_TTL) { store.del(SAVE); return; }
+    try { session = Quiz.Session.restore(bank, s.snap); } catch (e) { store.del(SAVE); return; }
+    if (session.done) return finish(new Date(s.finishedAt || s.at));
+    show('quiz');
+    if (session.current) return renderQuestion(session.current, session.index);
+    if (!session.history.length) return ask();
+    const h = session.history[session.history.length - 1]; // 上一题已作答、还没点「下一题」
+    renderQuestion(h, session.index - 1);
+    showFeedback(h.answer, h.choice, h.q, h.correct);
+  }
+
   // ---------- 答题 ----------
   function start(mode) {
     session = new Quiz.Session(bank, mode);
+    finishedAt = null;
     show('quiz');
     ask();
   }
@@ -88,7 +115,11 @@
     if (session.current) return; // 本题未作答时不能跳题
     const c = session.next();
     if (!c) return finish();
-    const i = session.index;
+    save();
+    renderQuestion(c, session.index);
+  }
+
+  function renderQuestion(c, i) {
     $('progress-bar').style.width = `${i / session.total * 100}%`;
     $('q-meta').textContent = `第 ${i + 1} / ${session.total} 题`;
     $('help-tip').hidden = session.maxState < 3; // 首次到达 S3 后一直显示
@@ -110,9 +141,13 @@
 
   function choose(k) {
     if (!session.current) return;
-    const answer = session.current.answer;
-    const q = session.current.q;
+    const { answer, q } = session.current;
     const ok = session.answer(k);
+    save();
+    showFeedback(answer, k, q, ok);
+  }
+
+  function showFeedback(answer, k, q, ok) {
     const btns = $('options').querySelectorAll('button');
     btns.forEach((b, i) => {
       b.disabled = true;
@@ -132,7 +167,7 @@
   }
 
   // ---------- 结果 ----------
-  function finish() {
+  function finish(at) {
     const r = session.result();
     $('r-mode').textContent = r.mode;
     $('r-points').textContent = r.score;
@@ -156,7 +191,8 @@
     }
 
     $('name').value = store.get('cert-name');
-    finishedAt = new Date();
+    finishedAt = at || new Date();
+    save(); // 结果页也存着：从外链回来还能看到鉴定书
     show('result');
     makeCert();
   }
@@ -179,7 +215,7 @@
   document.querySelectorAll('.mode').forEach(b => (b.onclick = () => start(b.dataset.mode)));
   $('next').onclick = ask;
   $('name').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(makeCert, 350); });
-  $('again').onclick = () => show('home');
+  $('again').onclick = () => { store.del(SAVE); show('home'); };
   document.addEventListener('keydown', e => {
     if ($('quiz').hidden || e.target.tagName === 'INPUT') return;
     const k = '1234'.indexOf(e.key) >= 0 ? '1234'.indexOf(e.key) : 'abcd'.indexOf(e.key.toLowerCase());
